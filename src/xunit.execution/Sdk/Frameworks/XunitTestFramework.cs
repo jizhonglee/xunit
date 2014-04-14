@@ -32,7 +32,7 @@ namespace Xunit.Sdk
             // of things that will be disconnected.
             await Task.Delay(1);
 
-            toDispose.ForEach(x => x.Dispose());
+            foreach (var x in toDispose) Dispose();
 
             LongLivedMarshalByRefObject.DisconnectAll();
         }

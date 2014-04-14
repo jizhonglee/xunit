@@ -2,19 +2,29 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
+#if !K10
+using System.Runtime.Serialization;
+#endif
 
 namespace Xunit.Sdk
 {
+#if !K10
+    [Serializable]
+    public partial class XunitTheoryTestCase : XunitTestCase
+    {
+        /// <inheritdoc />
+        protected XunitTheoryTestCase(SerializationInfo info, StreamingContext context) : base(info, context) { }
+    }
+#endif
+
     /// <summary>
     /// Represents a test case which runs multiple tests for theory data, either because the
     /// data was not enumerable or because the data was not serializable.
     /// </summary>
-    [Serializable]
-    public class XunitTheoryTestCase : XunitTestCase
+    public partial class XunitTheoryTestCase : XunitTestCase
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="XunitTheoryTestCase"/> class.
@@ -26,9 +36,6 @@ namespace Xunit.Sdk
         /// <param name="theoryAttribute">The theory attribute.</param>
         public XunitTheoryTestCase(ITestCollection testCollection, IAssemblyInfo assembly, ITypeInfo type, IMethodInfo method, IAttributeInfo theoryAttribute)
             : base(testCollection, assembly, type, method, theoryAttribute) { }
-
-        /// <inheritdoc />
-        protected XunitTheoryTestCase(SerializationInfo info, StreamingContext context) : base(info, context) { }
 
         /// <inheritdoc />
         protected override async Task RunTestsOnMethodAsync(IMessageBus messageBus,

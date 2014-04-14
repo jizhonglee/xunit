@@ -40,7 +40,7 @@ namespace Xunit.Sdk
                 var valueAsEnumerable = value as IEnumerable<CustomAttributeTypedArgument>;
                 if (valueAsEnumerable != null)
                     value = Convert(valueAsEnumerable).ToArray();
-                else if (value != null && value.GetType() != argument.ArgumentType && argument.ArgumentType.IsEnum)
+                else if (value != null && value.GetType() != argument.ArgumentType && argument.ArgumentType.GetTypeInfo().IsEnum)
                     value = Enum.Parse(argument.ArgumentType, value.ToString());
 
                 yield return value;
@@ -49,8 +49,7 @@ namespace Xunit.Sdk
 
         internal static AttributeUsageAttribute GetAttributeUsage(Type attributeType)
         {
-            return attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), true)
-                                .Cast<AttributeUsageAttribute>()
+            return attributeType.GetTypeInfo().GetCustomAttributes<AttributeUsageAttribute>(true)
                                 .SingleOrDefault()
                 ?? DefaultAttributeUsageAttribute;
         }
@@ -64,7 +63,7 @@ namespace Xunit.Sdk
         /// <inheritdoc/>
         public IEnumerable<IAttributeInfo> GetCustomAttributes(string assemblyQualifiedAttributeTypeName)
         {
-            return GetCustomAttributes(AttributeData.Constructor.ReflectedType, assemblyQualifiedAttributeTypeName).ToList();
+            return GetCustomAttributes(AttributeData.AttributeType, assemblyQualifiedAttributeTypeName).ToList();
         }
 
         internal static IEnumerable<IAttributeInfo> GetCustomAttributes(Type type, string assemblyQualifiedAttributeTypeName)
@@ -80,14 +79,14 @@ namespace Xunit.Sdk
 
             if (type != null)
             {
-                results = CustomAttributeData.GetCustomAttributes(type)
-                                             .Where(attr => attributeType.IsAssignableFrom(attr.Constructor.ReflectedType))
-                                             .OrderBy(attr => attr.Constructor.ReflectedType.Name)
-                                             .Select(Reflector.Wrap)
-                                             .Cast<IAttributeInfo>();
+                results = type.GetTypeInfo().CustomAttributes
+                                            .Where(attr => attributeType.IsAssignableFrom(attr.AttributeType))
+                                            .OrderBy(attr => attr.AttributeType.Name)
+                                            .Select(Reflector.Wrap)
+                                            .Cast<IAttributeInfo>();
 
                 if (attributeUsage.Inherited && (attributeUsage.AllowMultiple || !results.Any()))
-                    results = results.Concat(GetCustomAttributes(type.BaseType, attributeType, attributeUsage));
+                    results = results.Concat(GetCustomAttributes(type.GetTypeInfo().BaseType, attributeType, attributeUsage));
             }
 
             return results;
@@ -104,10 +103,10 @@ namespace Xunit.Sdk
 
         Attribute Instantiate(CustomAttributeData attributeData)
         {
-            Attribute attribute = (Attribute)Activator.CreateInstance(attributeData.Constructor.ReflectedType, GetConstructorArguments().ToArray());
+            Attribute attribute = (Attribute)Activator.CreateInstance(attributeData.AttributeType, GetConstructorArguments().ToArray());
 
             foreach (CustomAttributeNamedArgument namedArg in attributeData.NamedArguments)
-                ((PropertyInfo)namedArg.MemberInfo).SetValue(attribute, namedArg.TypedValue.Value, index: null);
+                attributeData.AttributeType.GetRuntimeProperty(namedArg.MemberName).SetValue(attribute, namedArg.TypedValue.Value, index: null);
 
             return attribute;
         }

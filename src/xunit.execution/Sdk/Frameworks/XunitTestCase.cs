@@ -5,27 +5,63 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Security;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
+#if !K10
+using System.Runtime.Serialization;
+using System.Security.Cryptography;
+#endif
 
 namespace Xunit.Sdk
 {
+#if !K10
+    [Serializable]
+    public partial class XunitTestCase : ISerializable
+    {
+        readonly static HashAlgorithm Hasher = new SHA1Managed();
+
+        /// <inheritdoc/>
+        protected XunitTestCase(SerializationInfo info, StreamingContext context)
+        {
+            string assemblyName = info.GetString("AssemblyName");
+            string typeName = info.GetString("TypeName");
+            string methodName = info.GetString("MethodName");
+            object[] arguments = (object[])info.GetValue("Arguments", typeof(object[]));
+            var testCollection = (ITestCollection)info.GetValue("TestCollection", typeof(ITestCollection));
+
+            var type = Reflector.GetType(assemblyName, typeName);
+            var typeInfo = Reflector.Wrap(type);
+            var methodInfo = Reflector.Wrap(type.GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static));
+            var factAttribute = methodInfo.GetCustomAttributes(typeof(FactAttribute)).Single();
+
+            Initialize(testCollection, Reflector.Wrap(type.Assembly), typeInfo, methodInfo, factAttribute, arguments);
+        }
+
+        /// <inheritdoc/>
+        [SecurityCritical]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("AssemblyName", Assembly.Name);
+            info.AddValue("TypeName", Class.Name);
+            info.AddValue("MethodName", Method.Name);
+            info.AddValue("Arguments", Arguments);
+            info.AddValue("TestCollection", TestCollection);
+        }
+    }
+#endif
+
     /// <summary>
     /// Default implementation of <see cref="IXunitTestCase"/> for xUnit v2 that supports tests decorated with
     /// both <see cref="FactAttribute"/> and <see cref="TheoryAttribute"/>.
     /// </summary>
-    [Serializable]
-    public class XunitTestCase : LongLivedMarshalByRefObject, IXunitTestCase, ISerializable
+    public partial class XunitTestCase : LongLivedMarshalByRefObject, IXunitTestCase
     {
         readonly static object[] EmptyArray = new object[0];
         readonly static MethodInfo EnumerableCast = typeof(Enumerable).GetMethod("Cast");
         readonly static MethodInfo EnumerableToArray = typeof(Enumerable).GetMethod("ToArray");
-        readonly static HashAlgorithm Hasher = new SHA1Managed();
         readonly static ITypeInfo ObjectTypeInfo = Reflector.Wrap(typeof(object));
 
         Lazy<string> uniqueID;
@@ -47,23 +83,6 @@ namespace Xunit.Sdk
                              object[] arguments = null)
         {
             Initialize(testCollection, assembly, type, method, factAttribute, arguments);
-        }
-
-        /// <inheritdoc/>
-        protected XunitTestCase(SerializationInfo info, StreamingContext context)
-        {
-            string assemblyName = info.GetString("AssemblyName");
-            string typeName = info.GetString("TypeName");
-            string methodName = info.GetString("MethodName");
-            object[] arguments = (object[])info.GetValue("Arguments", typeof(object[]));
-            var testCollection = (ITestCollection)info.GetValue("TestCollection", typeof(ITestCollection));
-
-            var type = Reflector.GetType(assemblyName, typeName);
-            var typeInfo = Reflector.Wrap(type);
-            var methodInfo = Reflector.Wrap(type.GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static));
-            var factAttribute = methodInfo.GetCustomAttributes(typeof(FactAttribute)).Single();
-
-            Initialize(testCollection, Reflector.Wrap(type.Assembly), typeInfo, methodInfo, factAttribute, arguments);
         }
 
         void Initialize(ITestCollection testCollection, IAssemblyInfo assembly, ITypeInfo type, IMethodInfo method, IAttributeInfo factAttribute, object[] arguments)
@@ -176,9 +195,8 @@ namespace Xunit.Sdk
         /// <returns>The list of <see cref="BeforeAfterTestAttribute"/> instances.</returns>
         protected virtual IEnumerable<BeforeAfterTestAttribute> GetBeforeAfterAttributes(Type classUnderTest, MethodInfo methodUnderTest)
         {
-            return classUnderTest.GetCustomAttributes(typeof(BeforeAfterTestAttribute))
-                                 .Concat(methodUnderTest.GetCustomAttributes(typeof(BeforeAfterTestAttribute)))
-                                 .Cast<BeforeAfterTestAttribute>();
+            return classUnderTest.GetTypeInfo().GetCustomAttributes<BeforeAfterTestAttribute>()
+                                 .Concat(methodUnderTest.GetCustomAttributes<BeforeAfterTestAttribute>());
         }
 
         /// <summary>
@@ -206,17 +224,6 @@ namespace Xunit.Sdk
                 displayValues[idx] = GetParameterName(parameterInfos, idx) + ": ???";
 
             return String.Format(CultureInfo.CurrentCulture, "{0}({1})", displayName, string.Join(", ", displayValues));
-        }
-
-        /// <inheritdoc/>
-        [SecurityCritical]
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("AssemblyName", Assembly.Name);
-            info.AddValue("TypeName", Class.Name);
-            info.AddValue("MethodName", Method.Name);
-            info.AddValue("Arguments", Arguments);
-            info.AddValue("TestCollection", TestCollection);
         }
 
         static string GetParameterName(IParameterInfo[] parameters, int index)
@@ -259,6 +266,7 @@ namespace Xunit.Sdk
 
         string GetUniqueID()
         {
+#if !K10
             using (var stream = new MemoryStream())
             {
                 Write(stream, Assembly.Name);
@@ -272,6 +280,17 @@ namespace Xunit.Sdk
                 byte[] hash = Hasher.ComputeHash(stream);
                 return String.Join("", hash.Select(x => x.ToString("x2")).ToArray());
             }
+#else
+            var builder = new StringBuilder(Assembly.Name.GetHashCode().ToString("x"))
+                .Append(Class.Name.GetHashCode().ToString("x"))
+                .Append(Method.Name.GetHashCode().ToString("x"));
+
+            if (Arguments != null)
+                foreach (var argument in Arguments)
+                    builder.Append(argument.GetHashCode().ToString("x"));
+
+            return builder.ToString();
+#endif
         }
 
         static void Write(Stream stream, string value)

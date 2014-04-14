@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0-aspnet-*",
+    "compilationOptions": {
+        "define": ["XUNIT_CORE_DLL"]
+    },
+    "dependencies": {
+        "xunit.abstractions": "",
+        "xunit.core": ""
+    },
+    "configurations": {
+        "k10": {
+            "dependencies": {
+                "System.Collections": "4.0.0.0",
+                "System.Collections.Concurrent": "4.0.0.0",
+                "System.Diagnostics.Debug": "4.0.10.0",
+                "System.Diagnostics.Tools": "4.0.0.0",
+                "System.Globalization": "4.0.10.0",
+                "System.IO": "4.0.0.0",
+                "System.IO.FileSystem": "4.0.0.0",
+                "System.Linq": "4.0.0.0",
+                "System.Reflection": "4.0.10.0",
+                "System.Reflection.Compatibility": "4.0.0.0",
+                "System.Reflection.Extensions": "4.0.0.0",
+                "System.Runtime": "4.0.20.0",
+                "System.Runtime.Extensions": "4.0.10.0",
+                "System.Text.Encoding": "4.0.20.0",
+                "System.Threading": "4.0.0.0",
+                "System.Threading.Tasks": "4.0.10.0",
+                "System.Threading.Thread": "4.0.0.0",
+                "System.Threading.ThreadPool": "4.0.10.0"
+            }
+        }
+    },
+    "code": "**\\*.cs;..\\common\\AssemblyExtensions.cs;..\\common\\DictionaryExtensions.cs;..\\common\\ExceptionExtensions.cs;..\\common\\GlobalAssemblyInfo.cs;..\\common\\Guard.cs;..\\common\\SerializationInfoExtensions.cs;..\\common\\SourceInformation.cs;..\\common\\TestDiscoveryVisitor.cs;..\\common\\TestOptionsNames.cs;..\\xunit.assert\\Asserts\\Sdk\\AssertEqualityComparer.cs;..\\xunit.assert\\Asserts\\Sdk\\AssertEqualityComparerAdapter.cs"
+}

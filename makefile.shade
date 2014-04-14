@@ -1,0 +1,87 @@
+use assembly='WindowsBase, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35'
+use namespace='System.IO.Packaging'
+
+var VERSION='0.1'
+var FULL_VERSION='0.1'
+var AUTHORS='Microsoft'
+
+use-standard-lifecycle
+k-standard-goals
+
+-// NOTE: Existing tools expect these to be strong-named
+#sn-compile target='compile'
+    build projectFile='src/xunit.abstractions.pcl/xunit.abstractions.pcl.csproj'
+    build projectFile='src/xunit.execution/xunit.execution.csproj'
+#sn-package target='package'
+    @{
+        var executionPath = Directory.EnumerateFiles(@"artifacts\build", "xunit.execution.2.0.0-aspnet-*.nupkg").First();        
+        using (var executionPackage = Package.Open(executionPath, FileMode.Open, FileAccess.ReadWrite))
+        {
+            CreatePartFromFile(
+                executionPackage,
+                @"src\xunit.execution\bin\Release\xunit.execution.dll",
+                @"lib\net45\xunit.execution.dll");
+        }
+        
+        var corePath = Directory.EnumerateFiles(@"artifacts\build", "xunit.core.2.0.0-aspnet-*.nupkg").First();        
+        using (var corePackage = Package.Open(corePath, FileMode.Open, FileAccess.ReadWrite))
+        {
+            CreatePartFromFile(
+                corePackage,
+                @"src\xunit.core\bin\Release\xunit.core.dll",
+                @"lib\net45\xunit.core.dll");
+        }
+
+        var abstractionsPath = Directory.EnumerateFiles(@"artifacts\build", "xunit.abstractions.2.0.0-aspnet-*.nupkg").First();        
+        using (var abstractionsPackage = Package.Open(abstractionsPath, FileMode.Open, FileAccess.ReadWrite))
+        {
+            CreatePartFromFile(
+                abstractionsPackage,
+                @"src\xunit.abstractions.pcl\bin\Release\xunit.abstractions.dll",
+                @"lib\net45\xunit.abstractions.dll");
+        }
+    }
+
+-// NOTE: TestDriven.Net expects these files next to xunit.core.dll
+#tdnet-compile target='compile'
+    build projectFile='src/xunit.runner.tdnet/xunit.runner.tdnet.csproj'
+#tdnet-package target='package'
+    @{
+        var packagePath = Directory.EnumerateFiles(@"artifacts\build", "xunit.core.2.0.0-aspnet-*.nupkg").First();
+        using (var package = Package.Open(packagePath, FileMode.Open, FileAccess.ReadWrite))
+        {
+            CreatePartFromFile(
+                package,
+                @"src\xunit.core\xunit.core.dll.tdnet",
+                @"lib\net45\xunit.core.dll.tdnet");
+            CreatePartFromFile(
+                package,
+                @"src\xunit.runner.tdnet\bin\Release\xunit.runner.tdnet.dll",
+                @"lib\net45\xunit.runner.tdnet.dll");
+            CreatePartFromFile(
+                package,
+                @"src\xunit.runner.utility\bin\Release\xunit.runner.utility.dll",
+                @"lib\net45\xunit.runner.utility.dll");
+        }
+    }
+
+functions
+    @{
+        PackagePart CreatePartFromFile(
+            Package destination,
+            string sourceFileName,
+            string partUriString,
+            bool replace = false)
+        {
+            var partUri = PackUriHelper.CreatePartUri(new Uri(partUriString, UriKind.Relative));            
+            var packagePart = destination.CreatePart(partUri, "application/octet", CompressionOption.Maximum);
+            
+            using (var sourceStream = File.OpenRead(sourceFileName))
+            using (var stream = packagePart.GetStream())
+            {
+                sourceStream.CopyTo(stream);
+            }
+            
+            return packagePart;
+        }
+    }

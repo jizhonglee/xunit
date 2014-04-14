@@ -1,11 +1,14 @@
 using System;
-using System.IO;
 using System.Reflection;
+#if !K10
+using System.IO;
+#endif
 
 internal static class AssemblyExtensions
 {
     public static string GetLocalCodeBase(this Assembly assembly)
     {
+#if !K10
         string codeBase = assembly.CodeBase;
         if (codeBase == null)
             return null;
@@ -18,6 +21,9 @@ internal static class AssemblyExtensions
             return "/" + codeBase;
 
         return codeBase.Replace('/', Path.DirectorySeparatorChar);
+#else
+        return assembly.Location;
+#endif
     }
 }
 

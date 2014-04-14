@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Xunit.Sdk
@@ -22,6 +20,7 @@ namespace Xunit.Sdk
             Assembly = assembly;
         }
 
+#if !K10
         /// <summary>
         /// Initializes a new instance of the <see cref="ReflectionAssemblyInfo"/> class.
         /// </summary>
@@ -30,12 +29,27 @@ namespace Xunit.Sdk
         {
             Assembly = Assembly.Load(AssemblyName.GetAssemblyName(assemblyFileName));
         }
+#endif
 
         /// <inheritdoc/>
         public Assembly Assembly { get; private set; }
 
         /// <inheritdoc/>
-        public string AssemblyPath { get { return Assembly.GetLocalCodeBase(); } }
+        public string AssemblyPath
+        {
+            get
+            {
+#if !K10
+                // NOTE: This is false for assemblies loaded from a byte[]
+                if (!string.IsNullOrEmpty(Assembly.Location))
+                {
+                    return Assembly.GetLocalCodeBase();
+                }
+#endif
+
+                return null;
+            }
+        }
 
         /// <inheritdoc/>
         public string Name { get { return Assembly.FullName; } }
@@ -46,12 +60,12 @@ namespace Xunit.Sdk
             Type attributeType = Type.GetType(assemblyQualifiedAttributeTypeName);
             Guard.ArgumentValid("assemblyQualifiedAttributeTypeName", "Could not locate type name", attributeType != null);
 
-            return CustomAttributeData.GetCustomAttributes(Assembly)
-                                      .Where(attr => attributeType.IsAssignableFrom(attr.Constructor.ReflectedType))
-                                      .OrderBy(attr => attr.Constructor.ReflectedType.Name)
-                                      .Select(Reflector.Wrap)
-                                      .Cast<IAttributeInfo>()
-                                      .ToList();
+            return Assembly.CustomAttributes
+                           .Where(attr => attributeType.IsAssignableFrom(attr.AttributeType))
+                           .OrderBy(attr => attr.AttributeType.Name)
+                           .Select(Reflector.Wrap)
+                           .Cast<IAttributeInfo>()
+                           .ToList();
         }
 
         /// <inheritdoc/>

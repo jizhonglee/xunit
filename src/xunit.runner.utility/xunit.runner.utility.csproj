@@ -11,7 +11,7 @@
     <AssemblyName>xunit.runner.utility</AssemblyName>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Signing.snk</AssemblyOriginatorKeyFile>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>..\xunit.ruleset</CodeAnalysisRuleSet>
@@ -183,8 +183,8 @@
     </CodeAnalysisDictionary>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\xunit.abstractions\xunit.abstractions.csproj">
-      <Project>{53012549-d81b-4e40-b626-67c19265aa6f}</Project>
+    <ProjectReference Include="..\xunit.abstractions.pcl\xunit.abstractions.pcl.csproj">
+      <Project>{77743589-F177-4007-97B8-50B82A1C7044}</Project>
       <Name>xunit.abstractions</Name>
     </ProjectReference>
   </ItemGroup>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using Xunit.Abstractions;
 
@@ -17,7 +18,7 @@ namespace Xunit.Sdk
         /// <summary>
         /// Gets the display name of the xUnit.net v2 test framework.
         /// </summary>
-        public static readonly string DisplayName = String.Format(CultureInfo.InvariantCulture, "xUnit.net {0}", typeof(XunitTestFrameworkDiscoverer).Assembly.GetName().Version);
+        public static readonly string DisplayName = String.Format(CultureInfo.InvariantCulture, "xUnit.net {0}", typeof(XunitTestFrameworkDiscoverer).GetTypeInfo().Assembly.GetName().Version);
 
         readonly IAssemblyInfo assemblyInfo;
         readonly Dictionary<Type, IXunitDiscoverer> discoverers = new Dictionary<Type, IXunitDiscoverer>();

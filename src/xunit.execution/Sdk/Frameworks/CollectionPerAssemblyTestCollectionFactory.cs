@@ -31,7 +31,7 @@ namespace Xunit.Sdk
         /// <param name="messageAggregator">The message aggregator used to report <see cref="EnvironmentalWarning"/> messages.</param>
         public CollectionPerAssemblyTestCollectionFactory(IAssemblyInfo assemblyInfo, IMessageAggregator messageAggregator)
         {
-            defaultCollection = new XunitTestCollection { DisplayName = "Test collection for " + Path.GetFileName(assemblyInfo.AssemblyPath) };
+            defaultCollection = new XunitTestCollection { DisplayName = "Test collection for " + (Path.GetFileName(assemblyInfo.AssemblyPath) ?? assemblyInfo.Name) };
             collectionDefinitions = TestCollectionFactoryHelper.GetTestCollectionDefinitions(assemblyInfo, messageAggregator);
         }
 

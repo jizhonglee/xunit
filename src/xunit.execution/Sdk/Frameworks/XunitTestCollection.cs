@@ -1,15 +1,15 @@
-﻿using System;
+﻿using Xunit.Abstractions;
+#if !K10
+using System;
 using System.Runtime.Serialization;
 using System.Security;
-using Xunit.Abstractions;
+#endif
 
 namespace Xunit.Sdk
 {
-    /// <summary>
-    /// The implementation of <see cref="ITestCollection"/> that is used by xUnit.net v2.
-    /// </summary>
+#if !K10
     [Serializable]
-    public class XunitTestCollection : LongLivedMarshalByRefObject, ITestCollection, ISerializable
+    public partial class XunitTestCollection : ISerializable
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="XunitTestCollection"/> class.
@@ -29,12 +29,6 @@ namespace Xunit.Sdk
         }
 
         /// <inheritdoc/>
-        public ITypeInfo CollectionDefinition { get; set; }
-
-        /// <inheritdoc/>
-        public string DisplayName { get; set; }
-
-        /// <inheritdoc/>
         [SecurityCritical]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
@@ -51,5 +45,18 @@ namespace Xunit.Sdk
                 info.AddValue("DeclarationTypeName", null);
             }
         }
+    }
+#endif
+
+    /// <summary>
+    /// The implementation of <see cref="ITestCollection"/> that is used by xUnit.net v2.
+    /// </summary>
+    public partial class XunitTestCollection : LongLivedMarshalByRefObject, ITestCollection
+    {
+        /// <inheritdoc/>
+        public ITypeInfo CollectionDefinition { get; set; }
+
+        /// <inheritdoc/>
+        public string DisplayName { get; set; }
     }
 }

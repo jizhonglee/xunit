@@ -50,16 +50,21 @@ namespace Xunit.Sdk
         /// <inheritdoc/>
         public void Dispose()
         {
-            toDispose.ForEach(x => x.Dispose());
+            foreach (var x in toDispose) x.Dispose();
         }
 
         string GetDisplayName(IAttributeInfo collectionBehaviorAttribute, bool disableParallelization, int maxParallelism)
         {
             var testCollectionFactory = XunitTestFrameworkDiscoverer.GetTestCollectionFactory(assemblyInfo, collectionBehaviorAttribute);
 
+            Version version = null;
+#if !K10
+            version = Environment.Version;
+#endif
+
             return String.Format("{0}-bit .NET {1} [{2}, {3}{4}]",
                                         IntPtr.Size * 8,
-                                        Environment.Version,
+                                        version,
                                         testCollectionFactory.DisplayName,
                                         disableParallelization ? "non-parallel" : "parallel",
                                         maxParallelism > 0 ? String.Format(" (max {0} threads)", maxParallelism) : "");
@@ -134,9 +139,15 @@ namespace Xunit.Sdk
             {
                 try
                 {
-                    Directory.SetCurrentDirectory(Path.GetDirectoryName(assemblyInfo.AssemblyPath));
+                    if (!string.IsNullOrEmpty(Path.GetDirectoryName(assemblyInfo.AssemblyPath)))
+                        Directory.SetCurrentDirectory(Path.GetDirectoryName(assemblyInfo.AssemblyPath));
 
-                    if (messageBus.QueueMessage(new TestAssemblyStarting(assemblyFileName, AppDomain.CurrentDomain.SetupInformation.ConfigurationFile, DateTime.Now,
+                    string configurationFile = null;
+#if !K10
+                    configurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile;
+#endif
+
+                    if (messageBus.QueueMessage(new TestAssemblyStarting(assemblyFileName ?? assemblyInfo.Name, configurationFile, DateTime.Now,
                                                                          displayName, XunitTestFrameworkDiscoverer.DisplayName)))
                     {
                         IList<RunSummary> summaries;
@@ -200,7 +211,7 @@ namespace Xunit.Sdk
             if (collection.CollectionDefinition != null)
             {
                 var declarationType = ((IReflectionTypeInfo)collection.CollectionDefinition).Type;
-                foreach (var interfaceType in declarationType.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollectionFixture<>)))
+                foreach (var interfaceType in declarationType.GetInterfaces().Where(i => i.IsConstructedGenericType && i.GetGenericTypeDefinition() == typeof(ICollectionFixture<>)))
                     CreateFixture(interfaceType, aggregator, collectionFixtureMappings);
 
                 var ordererAttribute = collection.CollectionDefinition.GetCustomAttributes(typeof(TestCaseOrdererAttribute)).SingleOrDefault();
@@ -265,20 +276,20 @@ namespace Xunit.Sdk
             if (ordererAttribute != null)
                 orderer = GetTestCaseOrderer(ordererAttribute);
 
-            if (testClassType.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollectionFixture<>)))
+            if (testClassType.GetInterfaces().Any(i => i.IsConstructedGenericType && i.GetGenericTypeDefinition() == typeof(ICollectionFixture<>)))
                 aggregator.Add(new TestClassException("A test class may not be decorated with ICollectionFixture<> (decorate the test collection class instead)."));
 
-            foreach (var interfaceType in testClassType.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IClassFixture<>)))
+            foreach (var interfaceType in testClassType.GetInterfaces().Where(i => i.IsConstructedGenericType && i.GetGenericTypeDefinition() == typeof(IClassFixture<>)))
                 CreateFixture(interfaceType, aggregator, fixtureMappings);
 
             if (collection.CollectionDefinition != null)
             {
                 var declarationType = ((IReflectionTypeInfo)collection.CollectionDefinition).Type;
-                foreach (var interfaceType in declarationType.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IClassFixture<>)))
+                foreach (var interfaceType in declarationType.GetInterfaces().Where(i => i.IsConstructedGenericType && i.GetGenericTypeDefinition() == typeof(IClassFixture<>)))
                     CreateFixture(interfaceType, aggregator, fixtureMappings);
             }
 
-            var isStaticClass = testClassType.IsAbstract && testClassType.IsSealed;
+            var isStaticClass = testClassType.GetTypeInfo().IsAbstract && testClassType.GetTypeInfo().IsSealed;
             if (!isStaticClass)
             {
                 var ctors = testClassType.GetConstructors();

@@ -1,4 +1,5 @@
-﻿using System.Runtime.Serialization;
+﻿#if !K10
+using System.Runtime.Serialization;
 
 internal static class SerializationInfoExtensions
 {
@@ -7,3 +8,4 @@ internal static class SerializationInfoExtensions
         return (T)info.GetValue(name, typeof(T));
     }
 }
+#endif
